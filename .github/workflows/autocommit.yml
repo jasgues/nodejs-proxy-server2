@@ -1,0 +1,27 @@
+name: Auto Commit
+
+on:
+  schedule:
+    - cron:  "0 18 * * *"   # her saat başı (UTC)
+  workflow_dispatch:       # manuel tetikleme opsiyonu
+
+jobs:
+  auto-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set Git config
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Make changes (örnek)
+        run: |
+          echo "Last run: $(date)" >> autocommit_log.txt
+
+      - name: Commit changes
+        run: |
+          git add .
+          git commit -m "Auto commit $(date)" || echo "No changes to commit"
+          git push
