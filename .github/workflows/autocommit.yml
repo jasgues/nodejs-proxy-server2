@@ -3,13 +3,15 @@ name: Auto Commit
 on:
   schedule:
     - cron: "0 * * * *"   # Her gün Türkiye saatiyle 21:10 (UTC'de 18:10)
-  workflow_dispatch:         # manuel tetikleme opsiyonu
+  workflow_dispatch:         # Manuel tetikleme opsiyonu
 
 jobs:
   auto-commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: main   # main branch üzerinde çalışacak
 
       - name: Set Git config
         run: |
@@ -23,5 +25,5 @@ jobs:
       - name: Commit changes
         run: |
           git add .
-          git commit -m "Auto commit $(date)"
-          git push
+          git commit -m "Auto commit $(date)" || echo "No changes to commit"
+          git push origin main

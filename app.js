@@ -1,81 +1,170 @@
-// Gerekli modülleri içeri aktarıyoruz
 const http = require('http');
 const net = require('net');
 const { URL } = require('url');
+const chalk = require('chalk');
+const axios = require("axios");
 
-// Proxy sunucumuzun çalışacağı port
 const PORT = 9999;
-const HOST = '0.0.0.0';//127.0.0.1
+const HOST = '0.0.0.0';
 
-// 1. HTTP Sunucusunu Oluşturma
+let ip = "";
+
+// === Public IP'yi al ===
+async function getPublicIP() {
+    try {
+        const res = await axios.get("https://api.ipify.org?format=json");
+        ip = res.data.ip;
+        return ip;
+    } catch (err) {
+        console.error("Hata:", err);
+        return "0.0.0.0";
+    }
+}
+
+// === İstatistikler ===
+const stats = {
+    totalRequests: 0,
+    totalDataSent: 0,
+    totalDataReceived: 0,
+    startTime: Date.now()
+};
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatUptime(seconds) {
+    function pad(s) { return (s < 10 ? '0' : '') + s; }
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    seconds %= (24 * 60 * 60);
+    const hours = Math.floor(seconds / (60 * 60));
+    seconds %= (60 * 60);
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${days}g ${pad(hours)}s ${pad(minutes)}d ${pad(secs)}sn`;
+}
+
+function logRequest(ip, method, url, statusCode, bytesSent, bytesReceived, duration) {
+    const statusColor =
+        statusCode >= 500 ? chalk.red
+            : statusCode >= 400 ? chalk.yellow
+                : statusCode >= 300 ? chalk.cyan
+                    : statusCode >= 200 ? chalk.green
+                        : chalk.gray;
+
+    const logMessage = [
+        chalk.gray(`[${new Date().toLocaleString('tr-TR')}]`),
+        statusColor(statusCode),
+        chalk.blue(method.padEnd(8)),
+        chalk.gray(`${ip.padEnd(15)}`),
+        `${url}`,
+        chalk.magenta(`| Süre: ${duration}ms`.padEnd(15)),
+        chalk.green(`↑ ${formatBytes(bytesSent)}`.padEnd(15)),
+        chalk.red(`↓ ${formatBytes(bytesReceived)}`.padEnd(15))
+    ].join(' ');
+
+    console.log(logMessage);
+}
+
+// === Proxy Server ===
 const server = http.createServer((req, res) => {
-    // Bu kısım sadece normal HTTP istekleri için çalışır
-    console.log(`HTTP İstek: ${req.method} ${req.url}`);
+    const startTime = Date.now();
+    let bytesSent = 0;
+    let bytesReceived = 0;
+    const clientIp = req.socket.remoteAddress;
 
-    // Hedef sunucuya gönderilecek seçenekleri hazırlıyoruz
     const options = {
         hostname: req.headers.host,
-        port: 80, // HTTP için varsayılan port
+        port: 80,
         path: req.url,
         method: req.method,
         headers: req.headers,
     };
 
-    // Hedef sunucuya proxy isteği oluşturuyoruz
     const proxyRequest = http.request(options, (proxyRes) => {
-        // Hedef sunucudan gelen cevabın başlıklarını istemciye yazıyoruz
+        proxyRes.on('data', chunk => {
+            bytesReceived += chunk.length;
+        });
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
-        // Hedef sunucudan gelen cevabın gövdesini istemciye pipe ediyoruz
         proxyRes.pipe(res);
     });
 
-    // İstemciden gelen isteğin gövdesini hedef sunucuya pipe ediyoruz
+    req.on('data', chunk => {
+        bytesSent += chunk.length;
+    });
+
+    res.on('finish', () => {
+        const duration = Date.now() - startTime;
+        stats.totalRequests++;
+        stats.totalDataSent += bytesSent;
+        stats.totalDataReceived += bytesReceived;
+        logRequest(clientIp, req.method, req.url, res.statusCode, bytesSent, bytesReceived, duration);
+    });
+
     req.pipe(proxyRequest);
 
-    // Hata yönetimi
-    proxyRequest.on('error', (err) => {
-        console.error(`Hedef sunucuya bağlanırken hata: ${err.message}`);
-        res.writeHead(502); // 502 Bad Gateway hatası
-        res.end('Proxy hatası: Hedef sunucuya ulaşılamadı.');
-    });
-
-    req.on('error', (err) => {
-        console.error(`İstemci bağlantı hatası: ${err.message}`);
-    });
+    proxyRequest.on('error', (err) => res.end());
 });
 
-// 2. HTTPS Tünelleme (CONNECT metodu)
+// === HTTPS CONNECT ===
 server.on('connect', (req, clientSocket, head) => {
-    // CONNECT isteği geldiğinde bu olay tetiklenir
-    console.log(`CONNECT İsteği: ${req.url}`);
+    const startTime = Date.now();
+    let bytesSent = 0;
+    let bytesReceived = 0;
+    const clientIp = req.socket.remoteAddress;
 
-    // Hedef sunucunun host ve port bilgilerini req.url'den alıyoruz (örn: "www.google.com:443")
     const { port, hostname } = new URL(`http://${req.url}`);
-    const serverPort = port || 443; // Port belirtilmemişse 443'tür
+    const serverPort = port || 443;
 
-    // Hedef sunucuya bir TCP bağlantısı (tünel) oluşturuyoruz
     const serverSocket = net.connect(serverPort, hostname, () => {
-        // Tünel kurulduğunda istemciye bağlantının başarılı olduğunu bildiriyoruz
         clientSocket.write('HTTP/1.1 200 Connection Established\r\n\r\n');
-
-        // Veriyi iki yönlü olarak akıtıyoruz (pipe)
         serverSocket.pipe(clientSocket);
         clientSocket.pipe(serverSocket);
     });
 
-    // Hata yönetimi
-    serverSocket.on('error', (err) => {
-        console.error(`Hedef sunucuya tünel hatası: ${err.message}`);
-        clientSocket.end('HTTP/1.1 502 Bad Gateway\r\n\r\n');
+    clientSocket.on('data', chunk => {
+        bytesSent += chunk.length;
+    });
+    serverSocket.on('data', chunk => {
+        bytesReceived += chunk.length;
     });
 
-    clientSocket.on('error', (err) => {
-        console.error(`İstemci soket hatası: ${err.message}`);
-        serverSocket.end();
+    clientSocket.on('close', () => {
+        const duration = Date.now() - startTime;
+        stats.totalRequests++;
+        stats.totalDataSent += bytesSent;
+        stats.totalDataReceived += bytesReceived;
+        logRequest(clientIp, req.method, req.url, '200 (TUNNEL)', bytesSent, bytesReceived, duration);
     });
+
+    serverSocket.on('error', (err) => clientSocket.end());
+    clientSocket.on('error', (err) => serverSocket.end());
 });
 
-// Sunucuyu dinlemeye başlıyoruz
-server.listen(PORT, HOST, () => {
-    console.log(`Node.js Proxy Sunucu ${HOST}:${PORT} üzerinde dinlemede... ✅`);
+// === Stats ===
+function printStats() {
+    console.log(chalk.yellow('\n--- Proxy İstatistikleri ---'));
+    console.log(`Çalışma Süresi       : ${chalk.cyan(formatUptime((Date.now() - stats.startTime) / 1000))}`);
+    console.log(`Toplam İstek         : ${chalk.cyan(stats.totalRequests)}`);
+    console.log(`Toplam Giden Veri    : ${chalk.green(formatBytes(stats.totalDataSent))}`);
+    console.log(`Toplam Gelen Veri    : ${chalk.red(formatBytes(stats.totalDataReceived))}`);
+    console.log(chalk.yellow('--------------------------\n'));
+}
+
+process.on('SIGINT', () => {
+    console.log(chalk.yellow('\nProxy sunucu kapatılıyor...'));
+    printStats();
+    process.exit(0);
 });
+
+// === Önce public IP al, sonra server başlat ===
+(async () => {
+    const publicIp = await getPublicIP();
+    server.listen(PORT, HOST, () => {
+        console.log(chalk.green(`Node.js Proxy Sunucu ${publicIp}:${PORT} üzerinde dinlemede... ✅`));
+    });
+})();
