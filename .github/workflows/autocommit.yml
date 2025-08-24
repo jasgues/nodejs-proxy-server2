@@ -2,7 +2,7 @@ name: Auto Commit
 
 on:
   schedule:
-    - cron: "10 18 * * *"   # Her gün Türkiye saatiyle 21:10 (UTC'de 18:10)
+    - cron: "0 * * * *"   # Her gün Türkiye saatiyle 21:10 (UTC'de 18:10)
   workflow_dispatch:         # manuel tetikleme opsiyonu
 
 jobs:
