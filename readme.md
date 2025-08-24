@@ -31,8 +31,8 @@ Bu projeyi çalıştırmak için sisteminizde **Node.js** kurulu olması yeterli
 ### 1. Projeyi Klonlayın
 
 ```bash
-git clone https://github.com/KULLANICI_ADINIZ/PROJE_ADINIZ.git
-cd PROJE_ADINIZ
+git clone https://github.com/jasgues/nodejs-proxy-server2.git
+cd nodejs-proxy-server2
 ```
 
 ### 2. Yerel Makinede Çalıştırma
@@ -40,7 +40,7 @@ cd PROJE_ADINIZ
 Herhangi bir harici paket gerektirmez. Doğrudan çalıştırabilirsiniz:
 
 ```bash
-node proxy.js
+node app.js
 ```
 
 Başarıyla çalıştığında terminalde aşağıdaki çıktıyı göreceksiniz:
@@ -76,7 +76,7 @@ curl -x http://127.0.0.1:9999 https://www.google.com
 Bu proxy sunucusunu bir VPS’e (örn. Google Cloud, DigitalOcean) kurmak için:
 
 1. **Node.js Kurulumu:** Sunucunuza Node.js’i nvm gibi bir araçla kurun.
-2. **Kod Değişikliği:** `proxy.js` dosyasındaki `HOST` değişkenini güncelleyin:
+2. **Kod Değişikliği:** `app.js` dosyasındaki `HOST` değişkenini güncelleyin:
 
    ```js
    const HOST = '0.0.0.0'; // Dış bağlantıları kabul etmesi için
@@ -119,7 +119,7 @@ Bu durum, sunucunuzun kötü niyetli faaliyetler için kullanılmasına ve IP ad
 
 ## 🤝 Katkıda Bulunma
 
-Katkılarınız için her zaman açığız!
+Katkılarınıza her zaman açığım!
 
 * Pull request açabilir
 * Issue oluşturabilirsiniz.
@@ -129,4 +129,3 @@ Katkılarınız için her zaman açığız!
 ## 📄 Lisans
 
 Bu proje **MIT Lisansı** altında lisanslanmıştır.
-Detaylar için [LICENSE](LICENSE) dosyasına göz atın.
