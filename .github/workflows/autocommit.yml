@@ -2,8 +2,8 @@ name: Auto Commit
 
 on:
   schedule:
-    - cron:  "0 18 * * *"   # her saat başı (UTC)
-  workflow_dispatch:       # manuel tetikleme opsiyonu
+    - cron: "10 18 * * *"   # Her gün Türkiye saatiyle 21:10 (UTC'de 18:10)
+  workflow_dispatch:         # manuel tetikleme opsiyonu
 
 jobs:
   auto-commit:
@@ -16,12 +16,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Make changes (örnek)
+      - name: Force a change (log dosyası güncelle)
         run: |
-          echo "Last run: $(date)" >> autocommit_log.txt
+          echo "Last auto commit: $(date)" >> autocommit_log.txt
 
       - name: Commit changes
         run: |
           git add .
-          git commit -m "Auto commit $(date)" || echo "No changes to commit"
+          git commit -m "Auto commit $(date)"
           git push
