@@ -3,7 +3,10 @@ name: Auto Commit
 on:
   schedule:
     - cron: "0 * * * *"   # Her gün Türkiye saatiyle 21:10 (UTC'de 18:10)
-  workflow_dispatch:         # Manuel tetikleme opsiyonu
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   auto-commit:
@@ -11,12 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          ref: main   # main branch üzerinde çalışacak
+          ref: main
 
       - name: Set Git config
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "jasgues"
+          git config user.email "webmanyak@gmail.com"
 
       - name: Force a change (log dosyası güncelle)
         run: |
