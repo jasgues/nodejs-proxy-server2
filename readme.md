@@ -113,7 +113,7 @@ Bu durum, sunucunuzun kötü niyetli faaliyetler için kullanılmasına ve IP ad
 * [ ] Kimlik Doğrulama: Basic Auth (Proxy-Authorization) desteği
 * [ ] Önbellekleme (Caching)
 * [ ] İçerik Filtreleme
-* [ ] Detaylı Loglama
+* [ ] <s>Detaylı Loglama</s>
 
 ---
 
